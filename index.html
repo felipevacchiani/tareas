@@ -24,6 +24,12 @@
           allow="clipboard-write" title="Pendientes"></iframe>
   <div id="aviso">¿No carga? <a href="https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec" target="_top">Abrir directo</a></div>
   <script>
+    // Safari (y todo navegador de iPhone/iPad) bloquea la sesión de Google dentro de otra página y da 401:
+    // ahí se abre la app directo, con el cartel de Google
+    var ua = navigator.userAgent;
+    var esApple = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    var esSafari = /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua);
+    if (esApple || esSafari) location.replace(document.getElementById('app').src);
     // El aviso queda unos segundos por si el navegador bloquea el inicio de sesión de Google dentro de la página
     setTimeout(function () { document.getElementById('aviso').classList.add('oculto'); }, 8000);
   </script>
