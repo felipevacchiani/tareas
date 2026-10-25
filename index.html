@@ -66,6 +66,8 @@
   .tarea .check { flex: 0 0 26px; height: 26px; border-radius: 50%; border: 2px solid var(--muted); background: none;
                   cursor: pointer; margin-top: 1px; }
   .tarea .check:hover { border-color: var(--real); background: rgba(34,197,94,.15); }
+  .tarea .cuerpo { flex: 1; cursor: pointer; }
+  .tarea .editar { flex: 0 0 auto; background: none; border: 0; color: var(--muted); font-size: 17px; padding: 0 2px; cursor: pointer; }
   .tarea .t { font-size: 16px; word-break: break-word; }
   .tarea .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
   .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--campo); font-size: 12px; margin-right: 4px; }
@@ -268,6 +270,25 @@
     </div>
   </div>
 </div>
+<div class="modal" id="modalEd" onclick="if (event.target === this) cerrarEditar()">
+  <div class="box">
+    <h3>Editar tarea</h3>
+    <form onsubmit="guardarEdicion(event)">
+      <label for="eProy">Proyecto</label>
+      <select id="eProy"></select>
+      <div class="campo"><label for="eFecha">Fecha (opcional)</label>
+      <input type="date" id="eFecha"></div>
+      <div class="campo"><label for="eConcepto">Concepto</label>
+      <input id="eConcepto" maxlength="500"></div>
+      <div class="campo"><label for="eResp">Responsable (opcional)</label>
+      <input id="eResp" maxlength="100" list="responsables"></div>
+      <div class="btns" style="margin-top:18px">
+        <button type="button" class="b-sec" onclick="cerrarEditar()">Cancelar</button>
+        <button type="submit" class="b-ok" id="eBtn">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -442,7 +463,8 @@ function itemTarea(p, t, conProyecto) {
   const pi = S.proyectos.indexOf(p), ti = p.tareas.indexOf(t);
   return `<div class="tarea${S.busy.has(k) ? ' busy' : ''}">
     <button class="check" title="Completar" onclick="pedirCompletar(${pi}, ${ti})"></button>
-    <div><div class="t">${esc(t.texto)}</div>${metaHtml(t, conProyecto ? p.nombre : '')}</div>
+    <div class="cuerpo" onclick="abrirEditar(${pi}, ${ti})"><div class="t">${esc(t.texto)}</div>${metaHtml(t, conProyecto ? p.nombre : '')}</div>
+    <button class="editar" title="Editar" onclick="abrirEditar(${pi}, ${ti})">✎</button>
   </div>`;
 }
 
@@ -526,6 +548,49 @@ function pedirCompletar(pi, ti) {
   $('mTxt').textContent = t.texto + ' · ' + p.nombre;
   $('modal').classList.add('show');
 }
+/* ================= Editar ================= */
+function listaResponsables() {
+  const resp = [...new Set(S.proyectos.flatMap(p => p.tareas.map(t => t.responsable)).filter(Boolean))].sort();
+  $('responsables').innerHTML = resp.map(r => '<option value="' + esc(r) + '">').join('');
+}
+
+function abrirEditar(pi, ti) {
+  const p = S.proyectos[pi]; if (!p) return;
+  const t = p.tareas[ti]; if (!t) return;
+  if (S.busy.has(clave(p, t))) return;
+  S.editando = { p, t };
+  $('eProy').innerHTML = S.proyectos.map((x, i) => '<option value="' + i + '">' + esc(x.nombre) + '</option>').join('');
+  $('eProy').value = String(pi);
+  $('eFecha').value = /^\d{2}\/\d{2}\/\d{4}$/.test(t.fecha || '') ? t.fecha.split('/').reverse().join('-') : '';
+  $('eConcepto').value = t.texto;
+  $('eResp').value = t.responsable || '';
+  listaResponsables();
+  $('modalEd').classList.add('show');
+}
+
+function cerrarEditar() { $('modalEd').classList.remove('show'); S.editando = null; }
+
+async function guardarEdicion(e) {
+  e.preventDefault();
+  const x = S.editando; if (!x) return;
+  const dest = S.proyectos[Number($('eProy').value)];
+  const texto = $('eConcepto').value.trim();
+  if (!texto) { toast('Escribí el concepto', true); return; }
+  const nuevo = { proyecto: dest.nombre, col: dest.col, texto: texto, fecha: $('eFecha').value, responsable: $('eResp').value.trim() };
+  const k = clave(x.p, x.t);
+  cerrarEditar();
+  S.busy.add(k); renderTodo();
+  try {
+    const r = await api('editarTarea', { proyecto: x.p.nombre, col: x.p.col, fila: x.t.fila, texto: x.t.texto, nuevo: nuevo });
+    S.proyectos = r.proyectos;
+    toast(dest.col !== x.p.col ? 'Movida a ' + dest.nombre + ' ✓' : 'Guardada ✓');
+  } catch (err) {
+    toast(err.message, true);
+  }
+  S.busy.delete(k);
+  renderTodo();
+}
+
 function cerrarModal() { $('modal').classList.remove('show'); S.pendiente = null; }
 
 async function confirmarCompletar() {
