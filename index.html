@@ -2,31 +2,30 @@
 <html lang="es">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Pendientes">
 <title>Pendientes</title>
-<meta http-equiv="refresh" content="0; url=https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec">
 <style>
   :root { color-scheme: dark; }
-  body { margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
-         background: #000; color: #f5f5f7; font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  .box { text-align: center; padding: 24px 16px; }
-  h1 { font-size: 24px; margin: 0 0 8px; }
-  p { color: #8e8e93; margin: 0 0 20px; }
-  a { display: inline-block; padding: 14px 22px; border-radius: 99px; background: #fff; color: #000;
-      font-weight: 700; text-decoration: none; }
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
+  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
+  #aviso { position: fixed; left: 0; right: 0; bottom: 16px; text-align: center; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+           color: #8e8e93; transition: opacity .3s; }
+  #aviso a { color: #f5f5f7; }
+  #aviso.oculto { opacity: 0; pointer-events: none; }
 </style>
 </head>
 <body>
-  <div class="box">
-    <h1>Pendientes</h1>
-    <p>Abriendo la app…</p>
-    <a href="https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec">Entrar</a>
-  </div>
+  <iframe id="app" src="https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec"
+          allow="clipboard-write" title="Pendientes"></iframe>
+  <div id="aviso">¿No carga? <a href="https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec" target="_top">Abrir directo</a></div>
   <script>
-    location.replace('https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec');
+    // El aviso queda unos segundos por si el navegador bloquea el inicio de sesión de Google dentro de la página
+    setTimeout(function () { document.getElementById('aviso').classList.add('oculto'); }, 8000);
   </script>
 </body>
 </html>
