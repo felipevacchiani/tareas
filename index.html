@@ -1,37 +1,723 @@
 <!DOCTYPE html>
-<html lang="es">
+<html>
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>Pendientes</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <meta name="theme-color" content="#000000">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black">
 <meta name="apple-mobile-web-app-title" content="Pendientes">
-<title>Pendientes</title>
+<meta name="referrer" content="no-referrer">
 <style>
-  :root { color-scheme: dark; }
-  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; }
-  iframe { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; background: #000; }
-  #aviso { position: fixed; left: 0; right: 0; bottom: 16px; text-align: center; font: 13px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-           color: #8e8e93; transition: opacity .3s; }
-  #aviso a { color: #f5f5f7; }
-  #aviso.oculto { opacity: 0; pointer-events: none; }
+  :root {
+    --bg: #000; --card: #0d0d0f; --campo: #1c1c1f; --line: #2a2a2e; --text: #f5f5f7; --muted: #8e8e93;
+    --est: #4f8cff; --real: #22c55e; --err: #ff453a; --warn: #ff9f0a; --acento: #4f8cff;
+  }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 16px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .wrap { max-width: 520px; margin: 0 auto; padding: 20px 16px 48px; min-height: 100vh; }
+  h1 { font-size: 26px; margin: 8px 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 22px; }
+  .pantalla { display: none; }
+  .pantalla.activa { display: block; }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .icono { background: var(--campo); border: 0; color: var(--text); border-radius: 99px; padding: 8px 14px;
+           font-size: 14px; cursor: pointer; }
+  .volver { background: none; border: 0; color: var(--muted); font-size: 15px; padding: 0; margin-bottom: 12px; cursor: pointer; }
+
+  /* Inicio: proyectos */
+  .proy { display: flex; justify-content: space-between; align-items: center; width: 100%; text-align: left;
+          background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 18px 16px;
+          margin-bottom: 10px; color: var(--text); font-size: 17px; font-weight: 600; cursor: pointer; }
+  .proy small { display: block; color: var(--muted); font-size: 13px; font-weight: 400; margin-top: 2px; }
+  .num { min-width: 34px; text-align: center; padding: 4px 10px; border-radius: 99px; background: var(--campo);
+         font-size: 15px; font-weight: 700; }
+  .num.cero { color: var(--muted); font-weight: 400; }
+  .proy.todos { background: #fff; color: #000; border: 0; }
+  .proy.todos small { color: #555; }
+  .proy.todos .num { background: #000; color: #fff; }
+  .proy.prod { border-color: #3a2f12; }
+  a.proy { text-decoration: none; }
+  .proy.link { border-color: #1e3a5f; }
+  .proy.cargar { background: var(--real); color: #000; border: 0; }
+  .proy.cargar small { color: #0b3d1e; }
+  .tag.late { background: #3a1212; color: #ff8a80; }
+  .campo { margin-top: 16px; }
+  .acceso { display: block; text-align: center; margin: -8px 0 18px; padding: 14px; border-radius: 14px;
+            border: 1px solid #1e3a5f; color: var(--text); text-decoration: none; font-weight: 600; }
+  .badge { display: inline-block; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 99px;
+           background: var(--warn); color: #000; margin-left: 6px; vertical-align: 2px; }
+  .linea { width: 100%; margin-top: 14px; padding: 15px; border-radius: 99px; border: 1px solid var(--line);
+           background: none; color: var(--text); font-size: 16px; cursor: pointer; }
+
+  /* Lista de tareas */
+  .alta { display: flex; gap: 8px; margin-bottom: 18px; }
+  .alta input { flex: 1; }
+  .alta button { border: 0; border-radius: 12px; padding: 0 18px; background: #fff; color: #000; font-weight: 700;
+                 font-size: 16px; cursor: pointer; }
+  .alta button:disabled { opacity: .5; }
+  .grupo { color: var(--muted); font-size: 13px; text-transform: uppercase; letter-spacing: .04em; margin: 22px 0 8px; }
+  .tarea { display: flex; gap: 12px; align-items: flex-start; background: var(--card); border: 1px solid var(--line);
+           border-radius: 14px; padding: 14px; margin-bottom: 8px; transition: opacity .2s; }
+  .tarea.busy { opacity: .4; pointer-events: none; }
+  .tarea .check { flex: 0 0 26px; height: 26px; border-radius: 50%; border: 2px solid var(--muted); background: none;
+                  cursor: pointer; margin-top: 1px; }
+  .tarea .check:hover { border-color: var(--real); background: rgba(34,197,94,.15); }
+  .tarea .t { font-size: 16px; word-break: break-word; }
+  .tarea .meta { color: var(--muted); font-size: 13px; margin-top: 4px; }
+  .tag { display: inline-block; padding: 1px 8px; border-radius: 99px; background: var(--campo); font-size: 12px; margin-right: 4px; }
+  .vacio-msg { text-align: center; color: var(--muted); padding: 40px 0; }
+  .cargando { text-align: center; color: var(--muted); padding: 40px 0; }
+
+  /* Histórico */
+  .filtros { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+  .filtros .full { grid-column: 1 / -1; }
+  .filtros label { font-size: 13px; }
+  .kpi { color: var(--muted); font-size: 14px; margin-bottom: 10px; }
+
+  /* Formularios */
+  label, .etq { display: block; font-size: 15px; color: var(--muted); margin: 0 0 6px; }
+  input, select, textarea { width: 100%; background: var(--campo); color: var(--text); border: 1px solid transparent;
+         border-radius: 12px; padding: 14px; font-size: 17px; font-family: inherit; appearance: none; -webkit-appearance: none; }
+  input::placeholder, textarea::placeholder { color: #636366; }
+  input[type=date] { padding: 11px 12px; font-size: 15px; color-scheme: dark; }
+  select { background-image: linear-gradient(45deg, transparent 50%, var(--muted) 50%), linear-gradient(135deg, var(--muted) 50%, transparent 50%);
+           background-position: calc(100% - 20px) 50%, calc(100% - 14px) 50%; background-size: 6px 6px; background-repeat: no-repeat; }
+  input:focus, select:focus, textarea:focus { outline: none; border-color: var(--acento); }
+
+  /* ===== Producción (igual que App Gastos Show) ===== */
+  .opcion { display: block; width: 100%; border: 0; border-radius: 18px; padding: 26px 20px;
+            margin-bottom: 14px; color: #fff; font-size: 20px; font-weight: 700; text-align: left; cursor: pointer; }
+  .opcion small { display: block; font-size: 14px; font-weight: 400; opacity: .85; margin-top: 4px; }
+  .opcion.est { background: var(--est); }
+  .opcion.real { background: var(--real); }
+  .opcion.tar { background: var(--card); border: 1px solid var(--line); }
+  .recibo { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px 16px; }
+  .cabecera { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 18px; }
+  .cabecera h2 { font-size: 21px; margin: 0; }
+  .chip { padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; color: #fff; white-space: nowrap; }
+  .vacio { background-color: transparent; border-color: var(--line); }
+  .concepto { margin-top: 18px; }
+  .concepto-tit { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+  .concepto-tit b { font-size: 17px; }
+  .quitar { background: none; border: 0; color: var(--muted); font-size: 14px; padding: 4px 0 4px 8px; cursor: pointer; }
+  .par { display: grid; grid-template-columns: 1.35fr 1fr; gap: 10px; }
+  .par input { background: transparent; border-color: var(--line); }
+  .par input:focus { border-color: var(--acento); }
+  .agregar { width: 100%; margin-top: 14px; padding: 13px; border-radius: 99px; border: 1px solid var(--line);
+             background: none; color: var(--text); font-size: 16px; cursor: pointer; }
+  hr { border: 0; border-top: 1px solid var(--line); margin: 20px 0 16px; }
+  .total { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 18px; }
+  .total span { font-size: 19px; font-weight: 600; }
+  .total strong { font-size: 28px; }
+  textarea { min-height: 90px; resize: vertical; background: transparent; border-color: var(--line); }
+  .guardar { width: 100%; margin-top: 18px; padding: 16px; border: 0; border-radius: 99px; background: #fff;
+             color: #000; font-size: 17px; font-weight: 700; cursor: pointer; }
+  .guardar:disabled { opacity: .5; }
+  .msg { margin-top: 12px; color: var(--err); min-height: 20px; text-align: center; font-size: 15px; }
+  .ok { text-align: center; padding-top: 50px; }
+  .ok .check { width: 84px; height: 84px; border-radius: 50%; background: var(--acento); margin: 0 auto 20px;
+               display: flex; align-items: center; justify-content: center; font-size: 44px; color: #fff; }
+  .resumen { text-align: left; background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+             padding: 14px 16px; margin: 18px 0 8px; color: var(--muted); font-size: 15px; }
+  .resumen div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+  .resumen .fin { color: var(--text); font-weight: 700; border-top: 1px solid var(--line); margin-top: 6px; padding-top: 8px; }
+  .sec { width: 100%; margin-top: 12px; padding: 15px; border-radius: 99px; border: 1px solid var(--line);
+         background: none; color: var(--text); font-size: 16px; cursor: pointer; }
+
+  /* Modal + toast */
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: none; align-items: flex-end; justify-content: center; z-index: 10; }
+  .modal.show { display: flex; }
+  .modal .box { background: var(--card); border: 1px solid var(--line); border-radius: 20px 20px 0 0; width: 100%;
+                max-width: 520px; padding: 22px 16px 28px; }
+  .modal h3 { margin: 0 0 6px; }
+  .modal p { color: var(--muted); margin: 0 0 18px; word-break: break-word; }
+  .modal .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .modal .btns button { padding: 15px; border-radius: 99px; font-size: 16px; font-weight: 700; cursor: pointer; }
+  .b-sec { background: none; border: 1px solid var(--line); color: var(--text); }
+  .b-ok { background: var(--real); border: 0; color: #000; }
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 40px); opacity: 0; background: #fff; color: #000;
+           padding: 12px 18px; border-radius: 99px; font-size: 15px; font-weight: 600; transition: all .25s; z-index: 20;
+           max-width: 90vw; text-align: center; pointer-events: none; }
+  .toast.show { transform: translate(-50%, 0); opacity: 1; }
+  .toast.err { background: var(--err); color: #fff; }
 </style>
 </head>
 <body>
-  <iframe id="app" src="https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec"
-          allow="clipboard-write" title="Pendientes"></iframe>
-  <div id="aviso">¿No carga? <a href="https://script.google.com/macros/s/AKfycbw3YfdmyyxjYrzHwtpaSNt2zI1PmZ5c9BPI7tpH9Cz2rU7_HXEAbdjvoNrHOFbzEtpkNw/exec" target="_top">Abrir directo</a></div>
-  <script>
-    // Safari (y todo navegador de iPhone/iPad) bloquea la sesión de Google dentro de otra página y da 401:
-    // ahí se abre la app directo, con el cartel de Google
-    var ua = navigator.userAgent;
-    var esApple = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    var esSafari = /Safari/.test(ua) && !/Chrome|Chromium|Edg|OPR|Firefox/.test(ua);
-    if (esApple || esSafari) location.replace(document.getElementById('app').src);
-    // El aviso queda unos segundos por si el navegador bloquea el inicio de sesión de Google dentro de la página
-    setTimeout(function () { document.getElementById('aviso').classList.add('oculto'); }, 8000);
-  </script>
+<div class="wrap">
+
+  <!-- ===== INICIO: PENDIENTES POR PROYECTO ===== -->
+  <section id="inicio" class="pantalla activa">
+    <div class="top">
+      <h1>Pendientes</h1>
+      <button class="icono" onclick="cargarProyectos(true)">↻ Actualizar</button>
+    </div>
+    <p class="sub" id="resumenInicio">Cargando…</p>
+    <div id="listaProyectos"><div class="cargando">Cargando proyectos…</div></div>
+    <button class="linea" onclick="abrirHistorico()">🗂 Histórico de completadas</button>
+  </section>
+
+  <!-- ===== PROYECTO: TAREAS ===== -->
+  <section id="proyecto" class="pantalla">
+    <button class="volver" onclick="volverDeProyecto()">‹ Volver</button>
+    <h1 id="pTitulo"></h1>
+    <p class="sub" id="pSub"></p>
+    <div id="pAccesos"></div>
+    <form class="alta" onsubmit="guardarTarea(event)" autocomplete="off">
+      <input id="nuevaTarea" placeholder="Nueva tarea…" maxlength="500">
+      <button id="btnTarea" type="submit">Guardar</button>
+    </form>
+    <div id="pLista"></div>
+  </section>
+
+  <!-- ===== CARGAR PENDIENTE ===== -->
+  <section id="cargar" class="pantalla">
+    <button class="volver" onclick="ir('inicio')">‹ Volver</button>
+    <form class="recibo" onsubmit="guardarPendiente(event)" autocomplete="off">
+      <div class="cabecera"><h2>Cargar pendiente</h2></div>
+      <label for="cProy">Proyecto</label>
+      <select id="cProy"></select>
+      <div class="campo"><label for="cFecha">Fecha (opcional)</label>
+      <input type="date" id="cFecha"></div>
+      <div class="campo"><label for="cConcepto">Concepto</label>
+      <input id="cConcepto" placeholder="¿Qué hay que hacer?" maxlength="500"></div>
+      <div class="campo"><label for="cResp">Responsable (opcional)</label>
+      <input id="cResp" placeholder="¿Quién se encarga?" maxlength="100" list="responsables"></div>
+      <datalist id="responsables"></datalist>
+      <button id="cBtn" class="guardar" type="submit">Guardar pendiente</button>
+    </form>
+  </section>
+
+  <!-- ===== TODOS LOS PENDIENTES ===== -->
+  <section id="todos" class="pantalla">
+    <button class="volver" onclick="ir('inicio')">‹ Volver</button>
+    <h1>Todos los pendientes</h1>
+    <p class="sub" id="tSub"></p>
+    <div id="tLista"></div>
+  </section>
+
+  <!-- ===== HISTÓRICO ===== -->
+  <section id="historico" class="pantalla">
+    <button class="volver" onclick="ir('inicio')">‹ Volver</button>
+    <h1>Histórico</h1>
+    <p class="sub">Tareas completadas</p>
+    <div class="filtros">
+      <div class="full"><label for="hProy">Proyecto</label><select id="hProy" onchange="renderHistorico()"></select></div>
+      <div><label for="hDesde">Desde</label><input type="date" id="hDesde" onchange="renderHistorico()"></div>
+      <div><label for="hHasta">Hasta</label><input type="date" id="hHasta" onchange="renderHistorico()"></div>
+    </div>
+    <div class="kpi" id="hKpi"></div>
+    <div id="hLista"></div>
+  </section>
+
+  <!-- ===== PRODUCCIÓN 1. Elegir hoja ===== -->
+  <section id="p-inicio" class="pantalla">
+    <button class="volver" onclick="ir('inicio')">‹ Pendientes</button>
+    <h1 id="prodTitulo">Gastos del show</h1>
+    <p class="sub">¿Dónde querés cargar el gasto?</p>
+    <button class="opcion est" onclick="elegir('estimado')">Gasto estimado<small>Se carga en M.A como Pendiente</small></button>
+    <button class="opcion real" onclick="elegir('real')">Gasto real<small>Se carga en M.A como Pago</small></button>
+    <button class="opcion tar" onclick="abrirProyecto(S.prodProyecto)">Tareas pendientes<small id="prodTareasN"></small></button>
+  </section>
+
+  <!-- ===== PRODUCCIÓN 2. Recibo ===== -->
+  <section id="p-form" class="pantalla">
+    <button class="volver" onclick="ir('p-inicio')">‹ Volver</button>
+    <form id="f" class="recibo" onsubmit="enviar(event)" autocomplete="off">
+      <div class="cabecera">
+        <h2>Nuevo recibo</h2>
+        <span id="chip" class="chip"></span>
+      </div>
+      <label for="rubro">Rubro</label>
+      <select id="rubro" required>
+        <option value="" disabled selected>Elegí un rubro</option>
+      </select>
+      <div id="conceptos"></div>
+      <button type="button" class="agregar" onclick="agregarConcepto(true)">＋ Agregar concepto</button>
+      <hr>
+      <div class="total"><span>Total</span><strong id="total">$ 0</strong></div>
+      <label for="obs">Observaciones</label>
+      <textarea id="obs" placeholder="Agregar observaciones del recibo..."></textarea>
+      <button id="btn" class="guardar" type="submit">Guardar recibo</button>
+      <div id="msg" class="msg"></div>
+    </form>
+  </section>
+
+  <!-- ===== PRODUCCIÓN 3. Confirmación ===== -->
+  <section id="p-listo" class="pantalla">
+    <div class="ok">
+      <div class="check">✓</div>
+      <h1>Recibo cargado</h1>
+      <div id="resumen" class="resumen"></div>
+      <button class="guardar" onclick="otro()">Cargar otro recibo</button>
+      <button class="sec" onclick="ir('p-inicio')">Cambiar de hoja</button>
+    </div>
+  </section>
+</div>
+
+<div class="modal" id="modal" onclick="if (event.target === this) cerrarModal()">
+  <div class="box">
+    <h3>¿Marcar como completada?</h3>
+    <p id="mTxt"></p>
+    <div class="btns">
+      <button class="b-sec" onclick="cerrarModal()">Cancelar</button>
+      <button class="b-ok" onclick="confirmarCompletar()">Completar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ================= Estado y utilidades ================= */
+const S = { proyectos: null, actual: null, desde: 'inicio', prodProyecto: null, hist: null,
+            busy: new Set(), pendiente: null, reqId: null, rubrosOk: false };
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const norm = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').trim().toLowerCase();
+const clave = (p, t) => p.col + '-' + t.fila + '-' + t.texto;
+// Accesos directos dentro de un proyecto: vienen del servidor (getAccesos) para no publicar links privados
+let ACCESOS = {};
+// Accesos directos que aparecen en el inicio, debajo de "Todos los pendientes"
+const LINKS = [
+  { nombre: 'QLK', detalle: 'Pendientes, pagos y grabaciones', url: 'https://felipevacchiani.github.io/pendientes/' },
+];
+
+// Versión publicada en GitHub Pages: se completa al generar la página (ver publicar_pagina.py).
+// Vacío = la página la sirve Apps Script y se usa google.script.run.
+const API_URL = 'https://script.google.com/macros/s/AKfycbyh4n9Q4RVfsNeqzXh_sqiKmQcmJwpSG7RWnDop1brCYyS0x1In5wVHyQmwA3z7u0ff_w/exec';
+const CLAVE_LS = 'pendientes_clave';
+
+function leerClave() {
+  const m = location.hash.match(/[#&]k=([^&]+)/);
+  if (m) {
+    try { localStorage.setItem(CLAVE_LS, decodeURIComponent(m[1])); } catch (e) {}
+    history.replaceState(null, '', location.pathname + location.search);
+    return decodeURIComponent(m[1]);
+  }
+  try { return localStorage.getItem(CLAVE_LS) || ''; } catch (e) { return ''; }
+}
+
+function pedirClave(motivo) {
+  $('resumenInicio').textContent = '';
+  $('listaProyectos').innerHTML =
+    '<div class="vacio-msg">' + esc(motivo || 'Ingresá la clave de acceso') + '<br><br>' +
+    '<input id="claveIn" type="password" autocomplete="current-password" placeholder="Clave" ' +
+    'style="width:100%;box-sizing:border-box;padding:12px;border-radius:12px;border:1px solid #333;background:#111;color:#fff;font-size:16px">' +
+    '<br><br><button class="icono" onclick="guardarClave()">Entrar</button></div>';
+}
+
+function guardarClave() {
+  const v = $('claveIn').value.trim();
+  if (!v) return;
+  try { localStorage.setItem(CLAVE_LS, v); } catch (e) {}
+  S.clave = v;
+  cargarProyectos(true);
+}
+
+async function apiHttp(fn, args) {
+  if (!S.clave) S.clave = leerClave();
+  if (!S.clave) { const e = new Error('Falta la clave'); e.sinClave = true; throw e; }
+  let r;
+  try {
+    // text/plain evita la consulta previa de CORS, que Apps Script no responde
+    const resp = await fetch(API_URL, { method: 'POST', body: JSON.stringify({ k: S.clave, fn: fn, args: args }) });
+    r = await resp.json();
+  } catch (e) {
+    throw new Error('Error de conexión');
+  }
+  if (!r.ok) {
+    const e = new Error(r.error || 'Error');
+    if (r.clave) { e.sinClave = true; S.clave = ''; try { localStorage.removeItem(CLAVE_LS); } catch (x) {} }
+    throw e;
+  }
+  return r.data;
+}
+
+function api(fn, ...args) {
+  if (API_URL) return apiHttp(fn, args);
+  return new Promise((ok, ko) => {
+    google.script.run
+      .withSuccessHandler(ok)
+      .withFailureHandler(e => ko(new Error((e && e.message) || String(e) || 'Error de conexión')))[fn](...args);
+  });
+}
+
+let toastT;
+function toast(m, err) {
+  const t = $('toast');
+  t.textContent = m; t.className = 'toast show' + (err ? ' err' : '');
+  clearTimeout(toastT); toastT = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), err ? 5000 : 2400);
+}
+
+function ir(id) {
+  document.querySelectorAll('.pantalla').forEach(p => p.classList.toggle('activa', p.id === id));
+  window.scrollTo(0, 0);
+  if (id === 'inicio') renderInicio();
+  if (id === 'todos') renderTodos();
+}
+
+function nuevoReq() {
+  S.reqId = String(crypto.randomUUID ? crypto.randomUUID() : Date.now() + '' + Math.random()).replace(/[^a-z0-9]/gi, '').slice(0, 16);
+}
+
+function proyecto(nombre) { return (S.proyectos || []).find(p => norm(p.nombre) === norm(nombre)); }
+
+/* ================= Inicio ================= */
+async function cargarProyectos(forzar) {
+  if (forzar) $('listaProyectos').innerHTML = '<div class="cargando">Cargando proyectos…</div>';
+  try {
+    const [proys, acc] = await Promise.all([api('getProyectos'), S.accesosOk ? ACCESOS : api('getAccesos')]);
+    S.proyectos = proys; ACCESOS = acc || {}; S.accesosOk = true;
+    renderTodo();
+    if (forzar) toast('Actualizado');
+  } catch (e) {
+    if (e.sinClave) return pedirClave(e.message === 'Falta la clave' ? '' : e.message);
+    $('listaProyectos').innerHTML = '<div class="vacio-msg">No pude leer la planilla: ' + esc(e.message) +
+      '<br><br><button class="icono" onclick="cargarProyectos(true)">Reintentar</button></div>';
+    $('resumenInicio').textContent = '';
+  }
+}
+
+function renderTodo() {
+  renderInicio();
+  if (S.actual) renderProyecto();
+  if ($('todos').classList.contains('activa')) renderTodos();
+  if (S.prodProyecto) renderProdTareas();
+}
+
+function renderInicio() {
+  if (!S.proyectos) return;
+  const total = S.proyectos.reduce((s, p) => s + p.tareas.length, 0);
+  $('resumenInicio').textContent = total + ' pendiente' + (total === 1 ? '' : 's') + ' en ' +
+    S.proyectos.length + ' proyecto' + (S.proyectos.length === 1 ? '' : 's');
+  $('listaProyectos').innerHTML =
+    '<button class="proy cargar" onclick="abrirCargar()"><span>＋ Cargar pendiente<small>Proyecto, concepto y fecha</small></span></button>' +
+    `<button class="proy todos" onclick="ir('todos')"><span>Todos los pendientes<small>Todos los proyectos juntos</small></span><span class="num">${total}</span></button>` +
+    LINKS.map(l => `<a class="proy link" href="${esc(l.url)}" target="_top"><span>${esc(l.nombre)}<small>${esc(l.detalle)}</small></span><span class="num">↗</span></a>`).join('') +
+    S.proyectos.map((p, i) => `
+      <button class="proy${p.produccion ? ' prod' : ''}" onclick="elegirProyecto(${i})">
+        <span>${esc(p.nombre)}${p.produccion ? '<span class="badge">PRODUCCIÓN</span>' : ''}
+          <small>${p.produccion ? 'Gastos del show y tareas' : (p.tareas.length ? 'Ver y cargar tareas' : 'Sin pendientes')}</small></span>
+        <span class="num${p.tareas.length ? '' : ' cero'}">${p.tareas.length}</span>
+      </button>`).join('');
+}
+
+function elegirProyecto(i) {
+  const p = S.proyectos[i];
+  if (p.produccion) return abrirProduccion(p.nombre);
+  S.desde = 'inicio';
+  abrirProyecto(p.nombre);
+}
+
+/* ================= Proyecto ================= */
+function abrirProyecto(nombre) {
+  S.desde = $('p-inicio').classList.contains('activa') ? 'p-inicio' : 'inicio';
+  S.actual = nombre;
+  nuevoReq();
+  $('nuevaTarea').value = '';
+  renderProyecto();
+  ir('proyecto');
+  setTimeout(() => $('nuevaTarea').focus(), 50);
+}
+
+function volverDeProyecto() { const d = S.desde; S.actual = null; S.desde = 'inicio'; ir(d); }
+
+function renderProyecto() {
+  const p = proyecto(S.actual);
+  if (!p) { $('pLista').innerHTML = '<div class="vacio-msg">Este proyecto ya no está en la hoja.</div>'; return; }
+  $('pTitulo').textContent = p.nombre;
+  $('pSub').textContent = p.tareas.length + ' pendiente' + (p.tareas.length === 1 ? '' : 's');
+  const acc = ACCESOS[Object.keys(ACCESOS).find(k => norm(k) === norm(p.nombre))] || [];
+  $('pAccesos').innerHTML = acc.map(a => '<a class="acceso" href="' + esc(a.url) + '" target="_blank" rel="noopener">' + esc(a.nombre) + ' ↗</a>').join('');
+  $('pLista').innerHTML = p.tareas.length
+    ? p.tareas.map(t => itemTarea(p, t)).join('')
+    : '<div class="vacio-msg">No hay pendientes en este proyecto. 🎉</div>';
+}
+
+function itemTarea(p, t, conProyecto) {
+  const k = clave(p, t);
+  const pi = S.proyectos.indexOf(p), ti = p.tareas.indexOf(t);
+  return `<div class="tarea${S.busy.has(k) ? ' busy' : ''}">
+    <button class="check" title="Completar" onclick="pedirCompletar(${pi}, ${ti})"></button>
+    <div><div class="t">${esc(t.texto)}</div>${metaHtml(t, conProyecto ? p.nombre : '')}</div>
+  </div>`;
+}
+
+async function guardarTarea(e) {
+  e.preventDefault();
+  const btn = $('btnTarea'); if (btn.disabled) return;
+  const texto = $('nuevaTarea').value.trim();
+  if (!texto) { toast('Escribí la tarea', true); return; }
+  const p = proyecto(S.actual); if (!p) return;
+  btn.disabled = true; btn.textContent = '…';
+  try {
+    const r = await api('agregarTarea', { reqId: S.reqId, proyecto: p.nombre, col: p.col, texto: texto });
+    S.proyectos = r.proyectos;
+    $('nuevaTarea').value = '';
+    nuevoReq();
+    renderTodo();
+    toast(r.duplicado ? 'Ya estaba guardada ✓' : 'Tarea guardada ✓');
+  } catch (err) {
+    toast(err.message, true); // se conserva reqId: si reintenta, no se duplica
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar';
+    $('nuevaTarea').focus();
+  }
+}
+
+// Fecha y responsable de la tarea. La fecha se marca en rojo si ya pasó.
+function metaHtml(t, proy) {
+  const tags = [];
+  if (proy) tags.push('<span class="tag">📁 ' + esc(proy) + '</span>');
+  if (t.fecha) {
+    const iso = /^\d{2}\/\d{2}\/\d{4}$/.test(t.fecha) ? t.fecha.split('/').reverse().join('-') : '';
+    const vencida = iso && iso < new Date().toLocaleDateString('en-CA');
+    tags.push('<span class="tag' + (vencida ? ' late' : '') + '">📅 ' + esc(t.fecha) + '</span>');
+  }
+  if (t.responsable) tags.push('<span class="tag">👤 ' + esc(t.responsable) + '</span>');
+  return tags.length ? '<div class="meta">' + tags.join('') + '</div>' : '';
+}
+
+/* ================= Cargar pendiente ================= */
+function abrirCargar() {
+  if (!S.proyectos) { toast('Todavía estoy cargando los proyectos', true); return; }
+  const s = $('cProy'), cur = s.value;
+  s.innerHTML = '<option value="" disabled selected>Seleccioná un proyecto</option>' +
+    S.proyectos.map(p => '<option value="' + esc(p.nombre) + '">' + esc(p.nombre) + '</option>').join('');
+  if (cur && proyecto(cur)) s.value = cur;
+  const resp = [...new Set(S.proyectos.flatMap(p => p.tareas.map(t => t.responsable)).filter(Boolean))].sort();
+  $('responsables').innerHTML = resp.map(r => '<option value="' + esc(r) + '">').join('');
+  nuevoReq();
+  ir('cargar');
+}
+
+async function guardarPendiente(e) {
+  e.preventDefault();
+  const btn = $('cBtn'); if (btn.disabled) return;
+  const p = proyecto($('cProy').value);
+  const texto = $('cConcepto').value.trim();
+  if (!p) { toast('Seleccioná un proyecto', true); return; }
+  if (!texto) { toast('Escribí el concepto', true); return; }
+  btn.disabled = true; btn.textContent = 'Guardando…';
+  try {
+    const r = await api('agregarTarea', { reqId: S.reqId, proyecto: p.nombre, col: p.col, texto: texto, fecha: $('cFecha').value, responsable: $('cResp').value.trim() });
+    S.proyectos = r.proyectos;
+    renderTodo();
+    $('cConcepto').value = ''; $('cFecha').value = ''; $('cResp').value = '';
+    nuevoReq();
+    toast(r.duplicado ? 'Ya estaba guardado ✓' : 'Guardado en ' + p.nombre + ' ✓');
+    $('cFecha').focus();
+  } catch (err) {
+    toast(err.message, true); // se conserva reqId: si reintenta, no se duplica
+  } finally {
+    btn.disabled = false; btn.textContent = 'Guardar pendiente';
+  }
+}
+
+/* ================= Completar ================= */
+function pedirCompletar(pi, ti) {
+  const p = S.proyectos[pi]; if (!p) return;
+  const t = p.tareas[ti]; if (!t) return;
+  if (S.busy.has(clave(p, t))) return;
+  S.pendiente = { p, t };
+  $('mTxt').textContent = t.texto + ' · ' + p.nombre;
+  $('modal').classList.add('show');
+}
+function cerrarModal() { $('modal').classList.remove('show'); S.pendiente = null; }
+
+async function confirmarCompletar() {
+  const x = S.pendiente; cerrarModal(); if (!x) return;
+  const k = clave(x.p, x.t);
+  S.busy.add(k); renderTodo();
+  try {
+    const r = await api('completarTarea', { proyecto: x.p.nombre, col: x.p.col, fila: x.t.fila, texto: x.t.texto });
+    S.proyectos = r.proyectos;
+    S.hist = null;
+    toast(r.yaCompletada ? 'Ya estaba completada' : 'Completada ✓');
+  } catch (e) {
+    toast(e.message, true);
+  }
+  S.busy.delete(k);
+  renderTodo();
+}
+
+/* ================= Todos ================= */
+// Orden: primero las que tienen fecha (la más próxima arriba), después las que no tienen
+const isoFecha = f => /^\d{2}\/\d{2}\/\d{4}$/.test(f || '') ? f.split('/').reverse().join('-') : '';
+function ordenFecha(a, b) {
+  const x = isoFecha(a.t.fecha), y = isoFecha(b.t.fecha);
+  return x && y ? x.localeCompare(y) : x ? -1 : y ? 1 : 0;
+}
+function renderTodos() {
+  if (!S.proyectos) return;
+  const con = S.proyectos.filter(p => p.tareas.length);
+  const total = con.reduce((s, p) => s + p.tareas.length, 0);
+  $('tSub').textContent = total + ' pendiente' + (total === 1 ? '' : 's');
+  $('tLista').innerHTML = con.length
+    ? con.flatMap(p => p.tareas.map(t => ({ p, t }))).sort(ordenFecha).map(x => itemTarea(x.p, x.t, true)).join('')
+    : '<div class="vacio-msg">No hay pendientes. 🎉</div>';
+}
+
+/* ================= Histórico ================= */
+async function abrirHistorico() {
+  ir('historico');
+  if (S.hist) return renderHistorico();
+  $('hLista').innerHTML = '<div class="cargando">Cargando…</div>';
+  try {
+    S.hist = await api('getHistorico');
+    const nombres = [...new Set([...(S.proyectos || []).map(p => p.nombre), ...S.hist.map(h => h.proyecto)])];
+    const cur = $('hProy').value;
+    $('hProy').innerHTML = '<option value="">Todos</option>' + nombres.map(n => `<option value="${esc(n)}">${esc(n)}</option>`).join('');
+    $('hProy').value = cur;
+    renderHistorico();
+  } catch (e) {
+    $('hLista').innerHTML = '<div class="vacio-msg">No se pudo cargar: ' + esc(e.message) + '</div>';
+  }
+}
+
+function renderHistorico() {
+  if (!S.hist) return;
+  const p = $('hProy').value, d1 = $('hDesde').value, d2 = $('hHasta').value;
+  const l = S.hist.filter(h => (!p || h.proyecto === p) && (!d1 || h.fin.slice(0, 10) >= d1) && (!d2 || h.fin.slice(0, 10) <= d2));
+  $('hKpi').textContent = l.length + ' completada' + (l.length === 1 ? '' : 's');
+  const fmt = f => f ? f.slice(8, 10) + '/' + f.slice(5, 7) + '/' + f.slice(0, 4) + (f.length > 10 ? ' ' + f.slice(11, 16) : '') : '';
+  $('hLista').innerHTML = l.length ? l.map(h => `
+    <div class="tarea"><div>
+      <div class="t">${esc(h.texto)}</div>
+      <div class="meta"><span class="tag">${esc(h.proyecto)}</span>${h.fecha ? '<span class="tag">📅 ' + esc(h.fecha) + '</span>' : ''}${h.responsable ? '<span class="tag">👤 ' + esc(h.responsable) + '</span>' : ''}✓ ${esc(fmt(h.fin))}</div>
+    </div></div>`).join('') : '<div class="vacio-msg">Sin resultados.</div>';
+}
+
+/* ================= Producción (App Gastos Show) ================= */
+const COLORES = { estimado: '#4f8cff', real: '#22c55e' };
+const NOMBRES = { estimado: 'Gasto estimado', real: 'Gasto real' };
+let destino = null;
+const sel = $('rubro');
+const marcarRubro = () => sel.classList.toggle('vacio', !sel.value);
+sel.addEventListener('change', marcarRubro);
+const lista = $('conceptos');
+const pesos = n => '$ ' + n.toLocaleString('es-AR');
+const numero = txt => Number(String(txt).replace(/\D/g, '')) || 0;
+
+async function abrirProduccion(nombre) {
+  S.prodProyecto = nombre;
+  $('prodTitulo').textContent = nombre;
+  renderProdTareas();
+  ir('p-inicio');
+  if (!S.rubrosOk) {
+    try {
+      const rubros = await api('getRubrosProduccion');
+      rubros.forEach(r => sel.add(new Option(r.trim(), r)));
+      S.rubrosOk = true;
+    } catch (e) { toast('No pude leer los rubros: ' + e.message, true); }
+  }
+}
+
+function renderProdTareas() {
+  const p = proyecto(S.prodProyecto);
+  const n = p ? p.tareas.length : 0;
+  $('prodTareasN').textContent = n + ' pendiente' + (n === 1 ? '' : 's') + ' · ver y cargar';
+}
+
+// Un bloque "Concepto N" con descripción + monto
+function agregarConcepto(enfocar) {
+  const div = document.createElement('div');
+  div.className = 'concepto';
+  div.innerHTML =
+    '<div class="concepto-tit"><b></b><button type="button" class="quitar">Quitar</button></div>' +
+    '<div class="par">' +
+      '<div><span class="etq">Concepto</span><input class="c-desc" placeholder="Descripción"></div>' +
+      '<div><span class="etq">Monto ($)</span><input class="c-monto" inputmode="numeric" placeholder="0"></div>' +
+    '</div>';
+  const monto = div.querySelector('.c-monto');
+  // Formato de miles mientras se escribe: 1500000 -> 1.500.000
+  monto.addEventListener('input', () => {
+    const n = numero(monto.value);
+    monto.value = n ? n.toLocaleString('es-AR') : '';
+    recalcular();
+  });
+  div.querySelector('.quitar').addEventListener('click', () => { div.remove(); renumerar(); recalcular(); });
+  lista.appendChild(div);
+  renumerar();
+  if (enfocar) div.querySelector('.c-desc').focus();
+}
+
+function renumerar() {
+  const items = lista.querySelectorAll('.concepto');
+  items.forEach((d, i) => {
+    d.querySelector('b').textContent = 'Concepto ' + (i + 1);
+    d.querySelector('.quitar').style.visibility = items.length > 1 ? 'visible' : 'hidden';
+  });
+}
+
+function leerItems() {
+  return [...lista.querySelectorAll('.concepto')].map(d => ({
+    concepto: d.querySelector('.c-desc').value.trim(),
+    monto: numero(d.querySelector('.c-monto').value),
+  }));
+}
+
+function recalcular() {
+  $('total').textContent = pesos(leerItems().reduce((s, it) => s + it.monto, 0));
+}
+
+function elegir(d) {
+  destino = d;
+  document.documentElement.style.setProperty('--acento', COLORES[d]);
+  const chip = $('chip');
+  chip.textContent = NOMBRES[d];
+  chip.style.background = COLORES[d];
+  limpiar();
+  ir('p-form');
+}
+
+function enviar(e) {
+  e.preventDefault();
+  const msg = $('msg');
+  // Se ignoran los conceptos que quedaron totalmente vacíos
+  const items = leerItems().filter(it => it.concepto || it.monto);
+  if (!sel.value) { msg.textContent = 'Elegí un rubro'; return; }
+  if (!items.length) { msg.textContent = 'Cargá al menos un concepto con su monto'; return; }
+  const mal = items.findIndex(it => !it.concepto || !it.monto);
+  if (mal >= 0) { msg.textContent = 'Al concepto ' + (mal + 1) + ' le falta la descripción o el monto'; return; }
+
+  const datos = { rubro: sel.value, items: items, observaciones: $('obs').value };
+  const btn = $('btn');
+  btn.disabled = true; btn.textContent = 'Guardando…'; msg.textContent = '';
+  api('guardarGasto', destino, datos)
+    .then(res => {
+      btn.disabled = false; btn.textContent = 'Guardar recibo';
+      const total = items.reduce((s, it) => s + it.monto, 0);
+      const e2 = t => t.replace(/&/g, '&amp;').replace(/</g, '&lt;');
+      $('resumen').innerHTML =
+        '<div><span>Rubro</span><span>' + e2(datos.rubro.trim()) + '</span></div>' +
+        items.map(it => '<div><span>' + e2(it.concepto) + '</span><span>' + pesos(it.monto) + '</span></div>').join('') +
+        '<div class="fin"><span>Total</span><span>' + pesos(total) + '</span></div>' +
+        '<div><span>Hoja</span><span>' + e2(res.hoja) + '</span></div>';
+      ir('p-listo');
+    })
+    .catch(err => {
+      btn.disabled = false; btn.textContent = 'Guardar recibo';
+      msg.textContent = 'No se pudo guardar: ' + (err.message || err);
+    });
+}
+
+function limpiar() {
+  $('f').reset();
+  $('msg').textContent = '';
+  lista.innerHTML = '';
+  agregarConcepto(false);
+  recalcular();
+  marcarRubro();
+}
+
+function otro() { limpiar(); ir('p-form'); }
+
+/* ================= Arranque ================= */
+cargarProyectos(false);
+</script>
 </body>
 </html>
